@@ -1,14 +1,18 @@
 'use server'
 
-export async function createBooking(bookingDetails: any) {
-	const res = await fetch(`${process.env.API_URL}/bookings?service_id=1`, {
-		method: 'POST',
-		body: JSON.stringify(bookingDetails),
-		headers: {
-			Authorization: `Bearer ${process.env.API_KEY}`,
-			'Content-Type': 'application/json',
-		},
-	})
-	const data = await res.json()
-	return data
+import { ReserveKitClient } from '@/providers/reservekit'
+import { CreateBookingPayload } from 'reservekitjs'
+
+export async function createBooking(bookingDetails: CreateBookingPayload) {
+	try {
+		const reservekitClient = ReserveKitClient()
+		await reservekitClient.initService(1)
+
+		const data = await reservekitClient.service?.createBooking(bookingDetails)
+
+		return data
+	} catch (error) {
+		console.error(error)
+		return { error }
+	}
 }
