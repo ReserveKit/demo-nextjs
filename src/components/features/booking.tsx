@@ -5,9 +5,10 @@ import { format } from 'date-fns'
 import { Calendar } from '@/components/ui/calendar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
 import { Clock, Globe, ArrowLeft, MonitorSmartphone } from 'lucide-react'
 import { createBooking } from '@/app/actions'
+import { CreateBookingPayload, IService, ITimeSlot } from 'reservekitjs'
+import { formatInTimeZone } from 'date-fns-tz'
 
 interface BookingDetails {
 	date?: string
@@ -21,12 +22,12 @@ export default function Booking({
 	service,
 	timeslots,
 }: {
-	service: any
-	timeslots: any[]
+	service: Pick<IService, 'name' | 'description' | 'timezone'>
+	timeslots: ITimeSlot[]
 }) {
 	const [step, setStep] = useState(1)
 	const [bookingDetails, setBookingDetails] = useState<BookingDetails>({})
-	const [filteredTimeslots, setFilteredTimeslots] = useState<any[]>([])
+	const [filteredTimeslots, setFilteredTimeslots] = useState<ITimeSlot[]>([])
 
 	useEffect(() => {
 		setFilteredTimeslots(
@@ -51,15 +52,14 @@ export default function Booking({
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault()
+
 		// Handle form submission
-		const data = await createBooking(bookingDetails)
+		const data = await createBooking(bookingDetails as CreateBookingPayload)
 
-		console.log(data)
-
-		if (data.error || data.status === 'error') {
-			alert(data.error)
-		} else {
+		if (!(data as { error: unknown }).error) {
 			alert('Booking created successfully')
+		} else {
+			alert((data as { error: unknown }).error)
 		}
 	}
 
@@ -103,13 +103,14 @@ export default function Booking({
 									<div>
 										<p>{format(bookingDetails.date, 'EEEE, MMMM d, yyyy')}</p>
 										<p>
-											{format(
+											{formatInTimeZone(
 												new Date(
 													filteredTimeslots.find(
 														timeslot =>
 															timeslot.id === bookingDetails.time_slot_id,
-													)?.start_time,
+													)?.start_time || new Date(),
 												),
+												service.timezone as string,
 												'h:mm a',
 											)}
 										</p>
@@ -141,7 +142,7 @@ export default function Booking({
 											/>
 											<div className="mt-4 flex items-center space-x-2 text-sm text-gray-600">
 												<Globe className="w-4 h-4" />
-												<span>Malaysia Time</span>
+												<span>{service.timezone as string}</span>
 											</div>
 										</div>
 
@@ -155,8 +156,17 @@ export default function Booking({
 															className="justify-start h-12 px-4"
 															onClick={() => handleTimeSelect(time.id)}
 														>
-															{format(new Date(time.start_time), 'h:mm a')} -{' '}
-															{format(new Date(time.end_time), 'h:mm a')}
+															{formatInTimeZone(
+																time.start_time,
+																service.timezone as string,
+																'h:mm a',
+															)}{' '}
+															-{' '}
+															{formatInTimeZone(
+																time.end_time,
+																service.timezone as string,
+																'h:mm a',
+															)}
 														</Button>
 													))}
 												</div>
